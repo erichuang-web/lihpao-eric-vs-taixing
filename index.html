@@ -367,7 +367,7 @@ function drawMap(){
   const pointAt = d => { const i=at(d); const a=P[i],b=P[Math.min(P.length-1,i+1)]; const f=(d-a.d)/((b.d-a.d)||1); return {X:a.X+(b.X-a.X)*f, Y:a.Y+(b.Y-a.Y)*f}; };
   const link = svg.append('line').attr('stroke','#8a93a3').attr('stroke-width',1).attr('stroke-dasharray','3 3').attr('pointer-events','none').node();
   const mkCar=(col,lab)=>{ const g=svg.append('g').attr('class','car'); g.append('circle').attr('r',15).attr('fill',col).attr('opacity',.18); g.append('circle').attr('r',8.5).attr('fill',col).attr('stroke','#fff').attr('stroke-width',2); g.append('text').attr('text-anchor','middle').attr('dominant-baseline','central').attr('fill','#fff').attr('stroke',col).attr('stroke-width',.5).style('font-size','9px').style('font-weight','900').style('font-style','italic').text(lab); return g.node(); };
-  rxMap = { pointAt, link, cars:{ e:mkCar(COL.e,'E'), t:mkCar(COL.t,'泰') } };
+  rxMap = { pointAt, link, cars:{ e:mkCar(COL.e,NAME1.slice(0,1)), t:mkCar(COL.t,NAME2.slice(0,1)) } };
   // 把畫布撐到包含賽道＋所有往外推的標籤，且讓「賽道」置中（以賽道中心對稱撐開，美觀）
   const vb=svg.node().getBBox(); const M=8;
   let tx0=1e18,tx1=-1e18,ty0=1e18,ty1=-1e18; for(const q of P){ if(q.X<tx0)tx0=q.X; if(q.X>tx1)tx1=q.X; if(q.Y<ty0)ty0=q.Y; if(q.Y>ty1)ty1=q.Y; }
