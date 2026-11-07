@@ -59,6 +59,7 @@
   .sw.e { background:var(--e); } .sw.t { background:var(--t); } .sw.g { background:var(--tie); }
   .map { position:relative; min-height:360px; }
   .chart { position:relative; min-height:230px; }
+  .map svg, .chart svg { touch-action:none; }
   .tip { position:absolute; background:rgba(12,13,16,.96); border:1px solid var(--line); border-left:3px solid var(--red); border-radius:3px; box-shadow:0 6px 20px rgba(0,0,0,.5); padding:6px 10px; font-size:12px; pointer-events:none; white-space:nowrap; font-variant-numeric:tabular-nums; z-index:3; }
   .tip .t0 { color:var(--mut); margin-bottom:2px; font-weight:700; }
   .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr)); gap:14px; }
@@ -198,6 +199,15 @@ const vmaxE = d3.max(TR,p=>p.eric_kmh), vmaxT = d3.max(TR,p=>p.tx_kmh);
 const segE = mini.filter(m=>m.winner==='Eric').length, segT = NSEG-segE;
 const gapTotal = DATA.laps.eric_s - DATA.laps.tx_s;
 const NAME1 = (DATA.meta&&DATA.meta.d1)||'Eric', NAME2=(DATA.meta&&DATA.meta.d2)||'泰興';
+(function swapNames(){
+  if((NAME1==='Eric'&&NAME2==='泰興'))return;
+  const swap=s=>s.replace(/Eric|泰興/g,m=>m==='Eric'?NAME1:NAME2);
+  document.title=swap(document.title);
+  const root=document.querySelector('.wrap'), ana=document.getElementById('analysis');
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); const ns=[];
+  while(w.nextNode()){ const n=w.currentNode; if(ana&&ana.contains(n))continue; if(/Eric|泰興/.test(n.nodeValue))ns.push(n); }
+  ns.forEach(n=>n.nodeValue=swap(n.nodeValue));
+})();
 
 // ---- 逐彎區段時間差 + 分析 ----
 function cornerStat(c,i){
@@ -248,7 +258,7 @@ function renderAnalysis(){
 }
 
 // ---- header fills ----
-document.getElementById('take').innerHTML = (gapTotal>0?'泰興':'Eric')+' 整圈快 <b>'+f3(Math.abs(gapTotal))+'</b> 秒。40 個區段裡 Eric 贏 <b>'+segE+'</b> 段、泰興贏 <b>'+segT+'</b> 段。';
+document.getElementById('take').innerHTML = (gapTotal>0?NAME2:NAME1)+' 整圈快 <b>'+f3(Math.abs(gapTotal))+'</b> 秒。40 個區段裡 '+NAME1+' 贏 <b>'+segE+'</b> 段、'+NAME2+'贏 <b>'+segT+'</b> 段。';
 document.getElementById('lapE').textContent = fmtLap(DATA.laps.eric_s);
 document.getElementById('lapT').textContent = fmtLap(DATA.laps.tx_s);
 document.getElementById('vmaxE').textContent = f1(vmaxE);
@@ -287,19 +297,19 @@ function drawMap(){
   const runs=(test)=>{const out=[];let s=-1;P.forEach((p,i)=>{if(test(p)){if(s<0)s=i;}else if(s>=0){out.push([s,i-1]);s=-1;}});if(s>=0)out.push([s,P.length-1]);return out;};
   if(mode==='dom'){
     for(const m of mini){ svg.append('path').attr('d',segPath(at(m.from),at(m.to))).attr('fill','none').attr('stroke',m.winner==='Eric'?COL.e:COL.t).attr('stroke-width',8).attr('stroke-linecap','butt')
-      .on('pointermove',(ev)=>{const[mx,my]=d3.pointer(ev,el); tipLines(tip,Math.round(m.from)+'–'+Math.round(m.to)+' m',[[COL.e,'Eric '+f3(m.es)+' s'],[COL.t,'泰興 '+f3(m.ts)+' s'],[null,m.winner+' 快 '+f3(Math.abs(m.gap))+' s']]); placeTip(el,tip,mx,my);})
+      .on('pointermove pointerdown',(ev)=>{const[mx,my]=d3.pointer(ev,el); tipLines(tip,Math.round(m.from)+'–'+Math.round(m.to)+' m',[[COL.e,NAME1+' '+f3(m.es)+' s'],[COL.t,NAME2+' '+f3(m.ts)+' s'],[null,(m.winner==='Eric'?NAME1:NAME2)+' 快 '+f3(Math.abs(m.gap))+' s']]); placeTip(el,tip,mx,my);})
       .on('pointerleave',()=>tip.hidden=true); }
   } else if(mode==='spd'){
     const step=5;
     for(let i=0;i<P.length-step;i+=step){ const dv=d3.mean(P.slice(i,i+step+1),p=>p.es-p.ts);
       svg.append('path').attr('d',segPath(i,i+step)).attr('fill','none').attr('stroke',dv>=0?COL.e:COL.t).attr('stroke-width',3+Math.min(10,Math.abs(dv)/1.5)).attr('stroke-linecap','butt')
-      .on('pointermove',(ev)=>{const[mx,my]=d3.pointer(ev,el);const p=P[i];tipLines(tip,Math.round(p.d)+' m',[[COL.e,'Eric '+f1(p.es)+' km/h'],[COL.t,'泰興 '+f1(p.ts)+' km/h']]);placeTip(el,tip,mx,my);})
+      .on('pointermove pointerdown',(ev)=>{const[mx,my]=d3.pointer(ev,el);const p=P[i];tipLines(tip,Math.round(p.d)+' m',[[COL.e,NAME1+' '+f1(p.es)+' km/h'],[COL.t,NAME2+' '+f1(p.ts)+' km/h']]);placeTip(el,tip,mx,my);})
       .on('pointerleave',()=>tip.hidden=true); }
   } else if(mode==='brk'){
     svg.append('path').attr('d',line(0)(P)).attr('fill','none').attr('stroke','#3a3f4b').attr('stroke-width',4);
     for(let i=0;i<P.length-1;i++){ if(P[i].eb<=8)continue;
       svg.append('path').attr('d',segPath(i,i+1)).attr('fill','none').attr('stroke',COL.e).attr('stroke-width',3+P[i].eb/10).attr('stroke-linecap','round')
-      .on('pointermove',(ev)=>{const[mx,my]=d3.pointer(ev,el);tipLines(tip,Math.round(P[i].d)+' m',[[COL.e,'Eric 煞車 '+Math.round(P[i].eb)+'%']]);placeTip(el,tip,mx,my);})
+      .on('pointermove pointerdown',(ev)=>{const[mx,my]=d3.pointer(ev,el);tipLines(tip,Math.round(P[i].d)+' m',[[COL.e,NAME1+' 煞車 '+Math.round(P[i].eb)+'%']]);placeTip(el,tip,mx,my);})
       .on('pointerleave',()=>tip.hidden=true); }
   } else {
     svg.append('path').attr('d',line(0)(P)).attr('fill','none').attr('stroke','#3a3f4b').attr('stroke-width',3);
@@ -313,12 +323,12 @@ function drawMap(){
   // 23 彎標註 T1–T23
   if(DATA.corners) for(const c of DATA.corners){
     const p=P[at(c.apex_m)]; const outSide=c.dir==='右'?1:-1;
-    const bx=p.X+p.nx*22*outSide, by=p.Y+p.ny*22*outSide;
+    const bx=p.X+p.nx*34*outSide, by=p.Y+p.ny*34*outSide;
     svg.append('line').attr('x1',p.X).attr('y1',p.Y).attr('x2',bx).attr('y2',by).attr('stroke','#596070').attr('stroke-width',1);
     const g=svg.append('g').attr('transform','translate('+bx+','+by+')');
     g.append('circle').attr('r',10).attr('fill','#0b0c0f').attr('stroke','#9aa1ad').attr('stroke-width',1.5);
     g.append('text').attr('text-anchor','middle').attr('dominant-baseline','central').attr('fill','#fff').style('font-size','9px').style('font-weight','800').style('font-style','italic').text(c.corner.slice(1));
-    g.on('pointermove',(ev)=>{const[mx,my]=d3.pointer(ev,el);const r=TR[at(c.apex_m)];tipLines(tip,c.corner+'・'+c.dir+'彎・'+Math.round(c.apex_m)+' m',[[COL.e,'Eric '+f1(r.eric_kmh)+' km/h'],[COL.t,'泰興 '+f1(r.tx_kmh)+' km/h']]);placeTip(el,tip,mx,my);}).on('pointerleave',()=>tip.hidden=true);
+    g.on('pointermove pointerdown',(ev)=>{const[mx,my]=d3.pointer(ev,el);const r=TR[at(c.apex_m)];tipLines(tip,c.corner+'・'+c.dir+'彎・'+Math.round(c.apex_m)+' m',[[COL.e,NAME1+' '+f1(r.eric_kmh)+' km/h'],[COL.t,NAME2+' '+f1(r.tx_kmh)+' km/h']]);placeTip(el,tip,mx,my);}).on('pointerleave',()=>tip.hidden=true);
   }
   // ghost cars
   const pointAt = d => { const i=at(d); const a=P[i],b=P[Math.min(P.length-1,i+1)]; const f=(d-a.d)/((b.d-a.d)||1); return {X:a.X+(b.X-a.X)*f, Y:a.Y+(b.Y-a.Y)*f}; };
@@ -349,7 +359,7 @@ function xyChart(elId, cfg){
   const dots=cfg.series.map(s=>svg.append('circle').attr('r',3.5).attr('fill',s.col).attr('visibility','hidden'));
   const tip=mkTip(el); const ds=cfg.series[0].pts.map(p=>p.d);
   svg.append('rect').attr('x',m.l).attr('y',m.t).attr('width',W-m.l-m.r).attr('height',H-m.t-m.b).attr('fill','transparent')
-    .on('pointermove',(ev)=>{ const[px]=d3.pointer(ev); const i=Math.min(ds.length-1,Math.max(0,d3.bisectLeft(ds,x.invert(px)))); const xx=x(ds[i]);
+    .on('pointermove pointerdown',(ev)=>{ const[px]=d3.pointer(ev); const i=Math.min(ds.length-1,Math.max(0,d3.bisectLeft(ds,x.invert(px)))); const xx=x(ds[i]);
       rule.attr('x1',xx).attr('x2',xx).attr('visibility','visible'); cfg.series.forEach((s,j)=>dots[j].attr('cx',xx).attr('cy',y(s.pts[i].v)).attr('visibility','visible'));
       tipLines(tip,Math.round(ds[i])+' m',cfg.tip(i)); const[mx,my]=d3.pointer(ev,el); placeTip(el,tip,mx,my); })
     .on('pointerleave',()=>{tip.hidden=true; rule.attr('visibility','hidden'); dots.forEach(d=>d.attr('visibility','hidden'));});
@@ -361,10 +371,10 @@ let speedChart=null, gapChart=null;
 function drawCharts(){
   speedChart = xyChart('speed', { xmax:DMAX, corners:DATA.corners, ydom:[d3.min(TR,p=>Math.min(p.eric_kmh,p.tx_kmh)), d3.max(TR,p=>Math.max(p.eric_kmh,p.tx_kmh))], yfmt:v=>v+' km/h',
     series:[{col:COL.e,pts:TR.map(p=>({d:p.d,v:p.eric_kmh}))},{col:COL.t,pts:TR.map(p=>({d:p.d,v:p.tx_kmh}))}],
-    tip:i=>[[COL.e,'Eric '+f1(TR[i].eric_kmh)+' km/h'],[COL.t,'泰興 '+f1(TR[i].tx_kmh)+' km/h']] });
+    tip:i=>[[COL.e,NAME1+' '+f1(TR[i].eric_kmh)+' km/h'],[COL.t,NAME2+' '+f1(TR[i].tx_kmh)+' km/h']] });
   const gp=TR.map(p=>({d:p.d,v:p.eric_t-p.tx_t}));
   gapChart = xyChart('gap', { xmax:DMAX, ydom:[Math.min(0,d3.min(gp,p=>p.v)), d3.max(gp,p=>p.v)], yfmt:v=>(v>0?'+':'')+f1(v)+' s',
-    series:[{col:COL.e,pts:gp}], tip:i=>[[null,'Eric 落後 '+f3(gp[i].v)+' s']] });
+    series:[{col:COL.e,pts:gp}], tip:i=>[[null,NAME1+' 落後 '+f3(gp[i].v)+' s']] });
 }
 
 // ---- playback ----
@@ -379,7 +389,7 @@ function renderPlay(){
   document.getElementById('rEd').textContent=Math.round(dE)+' m'+(t>=Emax?'・完成':'');
   document.getElementById('rTd').textContent=Math.round(dT)+' m'+(t>=Tmax?'・完成':'');
   const lead=dT-dE;
-  const gEl=document.getElementById('rGap'); gEl.textContent=Math.abs(lead)<1?'並駕':(lead>0?'泰興 領先':'Eric 領先'); gEl.style.color=Math.abs(lead)<1?'':(lead>0?COL.t:COL.e);
+  const gEl=document.getElementById('rGap'); gEl.textContent=Math.abs(lead)<1?'並駕':(lead>0?NAME2+' 領先':NAME1+' 領先'); gEl.style.color=Math.abs(lead)<1?'':(lead>0?COL.t:COL.e);
   document.getElementById('rGapm').textContent=Math.abs(Math.round(lead))+' m';
   document.getElementById('clock').textContent=f1(t)+'s';
   const sc=document.getElementById('scrub'); if(document.activeElement!==sc) sc.value=String(Math.round(t/mx*1000));
